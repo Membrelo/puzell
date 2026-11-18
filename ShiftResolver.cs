@@ -1,28 +1,19 @@
-using UnityEngine;
-
 public static class ShiftResolver
 {
-    public static Vector2Int DeltaOf(ShiftDirection dir)
+    private static readonly Vec2I[] DirDeltas =
     {
-        switch (dir)
-        {
-            case ShiftDirection.Up:    return new Vector2Int(0, 1);
-            case ShiftDirection.Down:  return new Vector2Int(0, -1);
-            case ShiftDirection.Left:  return new Vector2Int(-1, 0);
-            case ShiftDirection.Right: return new Vector2Int(1, 0);
-            default: return Vector2Int.zero;
-        }
-    }
+        new Vec2I(0, 1),   // Up
+        new Vec2I(0, -1),  // Down
+        new Vec2I(-1, 0),  // Left
+        new Vec2I(1, 0)    // Right
+    };
 
-    public static bool TryShift(GameState state, Piece piece, ShiftDirection dir)
+    public static Vec2I GetDelta(ShiftDirection dir) => DirDeltas[(int)dir];
+
+    /// <summary>Возвращает новую позицию фигуры после сдвига, если ход легален.</summary>
+    public static bool TryResolve(GameState state, Piece piece, ShiftDirection dir, out Vec2I newPos)
     {
-        var newAnchor = piece.Anchor + DeltaOf(dir);
-
-        if (!state.CanPlace(piece, newAnchor))
-            return false;
-
-        state.MovePiece(piece, newAnchor);
-
-        return true;
+        newPos = piece.Position + GetDelta(dir);
+        return state.CanPlace(piece, newPos);
     }
 }

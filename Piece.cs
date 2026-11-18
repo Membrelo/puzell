@@ -1,18 +1,15 @@
-using System.Collections.Generic;
-using UnityEngine;
-
-public class Piece
+public sealed class Piece
 {
-    public int Id;
-    public PieceType Type;
-    public PieceShape Shape;
-    public Vector2Int Anchor;
+    public int Id { get; }
+    public PieceType Type { get; }
+    public PieceShape Shape { get; }
+    public Vec2I Position { get; set; } // Anchor = левый нижний угол
 
-    public int Area => Shape.Area;
-
-    public IEnumerable<Vector2Int> Cells()
+    public Piece(int id, PieceType type, PieceShape shape, Vec2I position)
     {
-        foreach (var offset in Shape.Offsets)
-            yield return Anchor + offset;
+        Id = id;
+        Type = type;
+        Shape = shape;
+        Position = position;
     }
 }

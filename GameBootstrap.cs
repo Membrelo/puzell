@@ -1,64 +1,68 @@
 using UnityEngine;
 
-public class GameBootstrap : MonoBehaviour
+public sealed class GameBootstrap : MonoBehaviour
 {
-    public GridView GridView;
-    public PieceView PieceView;
-    public HighlightView HighlightView;
+    public const int GridW = 5;
+    public const int GridH = 5;
+    public const float CellSize = 1f;
 
-    [Header("Спрайты клеток")]
-    public Sprite CellSprite;
-    public Sprite CellIceSprite;
-    public Sprite CellStickySprite;
+    [SerializeField] private Sprite cellSprite;   // белый квадрат (pivot = Center)
+    [SerializeField] private Sprite pieceSprite;  // спрайт клетки фигуры
 
-    [Header("Спрайты фигур")]
-    public Sprite Sprite1x1;
-    public Sprite Sprite2x2;
+    public static GameBootstrap Instance { get; private set; }
 
-    private GameState _state;
-    public GameState State => _state;
+    public GameState State { get; private set; }
+    public GridView GridView { get; private set; }
+    public BattleBarView BattleBar { get; private set; }
+    public HighlightView Highlights { get; private set; }
 
-    void Start()
+    private void Awake()
     {
-        SetupCamera();
-        _state = new GameState();
+        Instance = this;
 
-        var p1 = new Piece { Type = PieceType.Normal, Shape = PieceShape.Square2, Anchor = new Vector2Int(1, 1) };
-        var p2 = new Piece { Type = PieceType.Ice, Shape = PieceShape.Single, Anchor = new Vector2Int(3, 3) };
-        
-        _state.PlacePiece(p1);
-        _state.PlacePiece(p2);
+        State = new GameState(GridW, GridH);
 
-        _state.Grid[4, 0].Effect = CellEffectType.Ice;
-        _state.Grid[0, 4].Effect = CellEffectType.Sticky;
+        // Слой 0: Клетки
+        GridView = new GameObject("GridView").AddComponent<GridView>();
+        GridView.Init(State, cellSprite, CellSize);
 
-        GridView.Init(_state, CellSprite, CellIceSprite, CellStickySprite);
-        PieceView.Init(_state, GetSpriteForPiece);
-        HighlightView.Init(GetSpriteForPiece);
+        // Слой 1: Подсветка
+        Highlights = new GameObject("HighlightView").AddComponent<HighlightView>();
+        Highlights.Init(GridView, cellSprite);
+
+        // Слой 2: Фигуры
+        var piecesRoot = new GameObject("PiecesRoot");
+        PieceViewPool.Init(piecesRoot.transform, pieceSprite, GridView, CellSize);
+
+        // Верхний боевой бар: слева игрок, справа враг (иконки + имена + HP-полоски)
+        BattleBar = new GameObject("BattleBar").AddComponent<BattleBarView>();
+        BattleBar.Init();
+
+        SpawnInitialPieces();
     }
 
-    public Sprite GetSpriteForPiece(Piece piece)
+    private void Start()
     {
-        if (piece.Shape == PieceShape.Single)  return Sprite1x1;
-        if (piece.Shape == PieceShape.Square2) return Sprite2x2;
-        return Sprite1x1; 
+        // Стартовый спавн: теперь фигуры НИКОГДА не встают "поперёк" или за края сетки —
+        // SpawnRandomPiece проверяет CanPlace для каждой candidate-позиции.
+        for (int i = 0; i < 3; i++)
+            State.SpawnRandomPiece(PieceType.Normal, out _);
+
+        RefreshAllViews();
     }
 
-    public void RefreshVisuals()
+    public void RefreshAllViews()
     {
-        GridView.Refresh();
-        PieceView.Refresh();
+        PieceViewPool.SyncAll(State.Pieces);
     }
 
-    private void SetupCamera()
+    /// <summary>Ход завершён: сдвигаем/спавним, обновляем бар.</summary>
+    public void OnTurnCommitted()
     {
-        Camera cam = Camera.main;
-        if (cam != null)
-        {
-            cam.transform.position = new Vector3(2.5f, 2.5f, -10f);
-            cam.orthographic = true;
-            cam.orthographicSize = 2.8f;
-            cam.backgroundColor = new Color(0.1f, 0.1f, 0.1f);
-        }
+        State.SpawnRandomPiece(PieceType.Normal, out bool spawned);
+        RefreshAllViews();
+
+        if (!spawned || State.IsGameOver())
+            Debug.Log("[Game] No valid placements — turn skipped / game over check.");
     }
 }

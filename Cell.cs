@@ -1,8 +1,10 @@
-public class Cell
+public struct Cell
 {
-    public CellEffectType Effect = CellEffectType.None;
-    public int? PieceId = null;
+    public const int NoPiece = 0;
 
-    public bool IsOccupied => PieceId.HasValue;
-    public bool IsEmpty => !PieceId.HasValue;
+    public CellEffectType Effect;
+    public int PieceId; // 0 == Cell.NoPiece
+
+    public bool IsOccupied => PieceId != NoPiece;
+    public bool IsEmpty => PieceId == NoPiece;
 }
